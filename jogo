@@ -1,1 +1,192 @@
-novo jogo
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Química Master: Edição Interativa</title>
+    <style>
+        :root {
+            --n1: #00c853; --n2: #2979ff; --n3: #ffea00; 
+            --n4: #ff9100; --n5: #ff1744; --n6: #d500f9;
+            --bg: #0d0d0d; --card: #1a1a1a;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; padding: 20px; }
+        .box { background: var(--card); padding: 40px; margin: 20px auto; max-width: 750px; border-radius: 20px; border: 2px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        /* Estilo dos inputs dentro da fórmula */
+        .coef-input { width: 40px; padding: 5px; font-size: 22px; text-align: center; border-radius: 5px; border: 2px solid #444; background: #252525; color: var(--n3); margin: 0 5px; font-weight: bold; }
+        .coef-input:focus { border-color: #fff; outline: none; background: #333; }
+        
+        /* Estilo para resposta de texto único */
+        .full-input { padding: 15px; width: 80%; font-size: 20px; border-radius: 8px; border: 2px solid #444; background: #252525; color: #fff; text-align: center; margin-bottom: 20px; }
+
+        .btn-responder { background: #fff; color: #000; font-weight: bold; padding: 15px 40px; border: none; cursor: pointer; border-radius: 8px; font-size: 18px; transition: 0.2s; }
+        .btn-responder:hover { transform: scale(1.05); }
+        
+        .btn-ok { background: #444; color: #fff; padding: 15px 40px; border: none; cursor: pointer; border-radius: 8px; display: none; margin: 20px auto; width: 100%; font-size: 18px; }
+
+        .formula-display { font-size: 32px; margin: 30px 0; color: #eee; line-height: 2em; }
+        #nivel-status { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+        .certo { color: var(--n1); font-weight: bold; }
+        .errado { color: var(--n5); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="nivel-status">Nível 1</div>
+    <div id="progresso" style="color: #666; margin-bottom: 20px;">Preparando bancada...</div>
+
+    <div class="box">
+        <p id="label-tipo" style="color: #888; text-transform: uppercase; font-size: 13px; letter-spacing: 1px;"></p>
+        
+        <div id="area-pergunta" class="formula-display"></div>
+        
+        <div id="feedback" style="margin-top: 20px; min-height: 60px; font-size: 18px;"></div>
+        
+        <button id="btn-main" class="btn-responder" onclick="verificar()">VERIFICAR (Enter)</button>
+        <button id="btn-ok" class="btn-ok" onclick="proxima()">OK! PRÓXIMA ➔</button>
+    </div>
+
+<script>
+let nivel = 1;
+let perguntaAtual = {};
+let indiceAtual = -1;
+let acertouUltima = false;
+
+const banco = {
+    1: [
+        {p: "_ HCl + _ NaOH -> _ NaCl + _ H2O", r: ["1111"], t: "Balanceamento: Neutralização"},
+        {p: "_ H2 + _ O2 -> _ H2O", r: ["212"], t: "Balanceamento: Síntese"},
+        {p: "_ Fe + _ O2 -> _ Fe2O3", r: ["432"], t: "Balanceamento: Oxidação"}
+    ],
+    2: [
+        {p: "Soda Cáustica", r: ["naoh"], t: "Nome -> Fórmula"},
+        {p: "Ácido Sulfúrico", r: ["h2so4"], t: "Nome -> Fórmula"},
+        {p: "Sal de Cozinha", r: ["nacl"], t: "Nome -> Fórmula"}
+    ],
+    3: [
+        {p: "Fe2(SO4)3", r: ["sulfato ferrico", "sulfato de ferro iii"], t: "Fórmula -> Nome"},
+        {p: "Ca(OH)2", r: ["hidroxido de calcio", "cal extinta"], t: "Fórmula -> Nome"}
+    ],
+    4: [
+        {p: "_ C3H8 + _ O2 -> _ CO2 + _ H2O", r: ["1534"], t: "Balanceamento: Combustão"},
+        {p: "_ Al + _ HCl -> _ AlCl3 + _ H2", r: ["2623"], t: "Balanceamento: Deslocamento"}
+    ],
+    5: [
+        {p: "Vinagre (Ácido)", r: ["acido acetico", "acido etanoico"], t: "Orgânica"},
+        {p: "K2Cr2O7", r: ["dicromato de potassio"], t: "Fórmula -> Nome"}
+    ],
+    6: [
+        {p: "_ Cu + _ HNO3 -> _ Cu(NO3)2 + _ NO + _ H2O", r: ["38324"], t: "Desafio Redox"}
+    ]
+};
+
+function normalizar(t) {
+    return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s/g, "").replace(/,/g, "").replace(/-/g, "");
+}
+
+function proxima() {
+    if (acertouUltima && indiceAtual !== -1) {
+        banco[nivel].splice(indiceAtual, 1);
+    }
+
+    if (banco[nivel].length === 0) {
+        if (nivel < 6) nivel++;
+        else {
+            document.body.innerHTML = "<h1>🏆 MESTRE DA QUÍMICA</h1><p>Você completou todos os desafios!</p>";
+            return;
+        }
+    }
+
+    const cores = ["", "var(--n1)", "var(--n2)", "var(--n3)", "var(--n4)", "var(--n5)", "var(--n6)"];
+    document.getElementById("nivel-status").innerText = "Nível " + nivel;
+    document.getElementById("nivel-status").style.color = cores[nivel];
+    document.getElementById("progresso").innerText = `Questões restantes: ${banco[nivel].length}`;
+
+    indiceAtual = Math.floor(Math.random() * banco[nivel].length);
+    perguntaAtual = banco[nivel][indiceAtual];
+
+    document.getElementById("label-tipo").innerText = perguntaAtual.t;
+    const area = document.getElementById("area-pergunta");
+    area.innerHTML = "";
+
+    // Se tiver "_" na pergunta, cria inputs múltiplos (Balanceamento)
+    if (perguntaAtual.p.includes("_")) {
+        let partes = perguntaAtual.p.split("_");
+        partes.forEach((parte, i) => {
+            area.innerHTML += `<span>${parte}</span>`;
+            if (i < partes.length - 1) {
+                area.innerHTML += `<input type="text" class="coef-input" maxlength="2" data-index="${i}">`;
+            }
+        });
+    } else {
+        // Senão, cria um input único grande
+        area.innerHTML = `<div>${perguntaAtual.p}</div><input type="text" class="full-input" id="input-unico">`;
+    }
+
+    document.getElementById("feedback").innerHTML = "";
+    document.getElementById("btn-ok").style.display = "none";
+    document.getElementById("btn-main").style.display = "inline-block";
+    
+    // Focar no primeiro input disponível
+    setTimeout(() => {
+        let primeiro = document.querySelector(".coef-input, .full-input");
+        if(primeiro) primeiro.focus();
+    }, 10);
+}
+
+function verificar() {
+    let respostaUsuario = "";
+    let inputs = document.querySelectorAll(".coef-input");
+    
+    if (inputs.length > 0) {
+        inputs.forEach(i => respostaUsuario += i.value.trim());
+    } else {
+        respostaUsuario = normalizar(document.getElementById("input-unico").value);
+    }
+
+    let correto = perguntaAtual.r.some(r => normalizar(r) === normalizar(respostaUsuario));
+    let ftd = document.getElementById("feedback");
+
+    if (correto) {
+        acertouUltima = true;
+        ftd.innerHTML = `<span class="certo">✔ EXCELENTE!</span>`;
+    } else {
+        acertouUltima = false;
+        ftd.innerHTML = `<span class="errado">✘ INCORRETO</span><br><small>Gabarito: ${perguntaAtual.r[0].toUpperCase()}</small>`;
+    }
+
+    document.getElementById("btn-main").style.display = "none";
+    document.getElementById("btn-ok").style.display = "block";
+    document.querySelectorAll("input").forEach(i => i.disabled = true);
+    document.getElementById("btn-ok").focus();
+}
+
+// Lógica Global de Teclado
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        const btnOk = document.getElementById("btn-ok");
+        const btnMain = document.getElementById("btn-main");
+
+        if (btnOk.style.display === "block") {
+            proxima();
+        } else {
+            // Se estiver em um input de coeficiente, pula para o próximo
+            if (document.activeElement.classList.contains("coef-input")) {
+                let inputs = Array.from(document.querySelectorAll(".coef-input"));
+                let index = inputs.indexOf(document.activeElement);
+                if (index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                } else {
+                    verificar();
+                }
+            } else {
+                verificar();
+            }
+        }
+    }
+});
+
+proxima();
+</script>
+</body>
+</html>
